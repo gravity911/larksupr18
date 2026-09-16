@@ -17,8 +17,28 @@ from support import (MODEL, SYSTEM_PROMPT, call_local, execute_tool, mcp_client,
 MAX_TOOL_CALLS = 8  # Larkspur's own build capped the loop here; then a human takes over.
 
 TONE_ADDENDUM = ""                       # ✏️ Build 4, step 4.1, intelligence lane
-EXTRA_TOOLS: List[Dict[str, Any]] = []   # ✏️ Build 2, step 2.1: schemas for the tools you add
-LOCAL_TOOLS: Dict[str, Any] = {}         # ✏️ Build 2, step 2.1: the functions behind them
+EXTRA_TOOLS: List[Dict[str, Any]] = [
+    {
+        "name": "next_available_day",
+        "description": (
+            "Answer when a disrupted customer can next travel. Use it for questions about "
+            "the earliest available DATE, after you know the booked route, travel date, and "
+            "cabin. It returns the first date with an open seat for one passenger; it never "
+            "holds or books a seat."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "origin": {"type": "string", "description": "Three-letter departure airport code, e.g. DEN."},
+                "dest": {"type": "string", "description": "Three-letter arrival airport code, e.g. AUS."},
+                "date": {"type": "string", "description": "Booked travel date in YYYY-MM-DD format."},
+                "cabin": {"type": "string", "description": "Booked cabin: Y for main or J for first. Defaults to Y."},
+            },
+            "required": ["origin", "dest", "date"],
+        },
+    },
+]
+LOCAL_TOOLS: Dict[str, Any] = {"next_available_day": next_available_day}
 
 
 def text_of(response) -> str:
@@ -119,12 +139,7 @@ def build_tools() -> List[Dict[str, Any]]:                 # ✏️ Build 1, ste
                 "type": "object",
                 "properties": {
                     "flight_no": {"type": "string"},
-                    "date": {"type": "string", "description": (
-    "Search available Larkspur rebooking options for the disrupted segment on "
-    "this reservation. Use after confirming the booking and disruption; pass "
-    "only the customer's PNR. The tool derives the booked route, date, cabin, "
-    "and passenger count, and excludes the affected flight."
-),},
+                    "date": {"type": "string", "description": "YYYY-MM-DD"},
                 },
                 "required": ["flight_no", "date"],
             },
